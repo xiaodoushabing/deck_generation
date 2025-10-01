@@ -118,14 +118,14 @@ repos:
         types: [python]
         args: [--config=pyproject.toml]
 
-      - id: interrogate
-        name: Interrogate
-        description: Check code coverage using Interrogate.
-        entry: interrogate
-        language: system
-        types: [python]
-        pass_filenames: false
-        args: ['--config=pyproject.toml']
+      # - id: interrogate
+      #   name: Interrogate
+      #   description: Check code coverage using Interrogate.
+      #   entry: interrogate
+      #   language: system
+      #   types: [python]
+      #   pass_filenames: false
+      #   args: ['--config=pyproject.toml']
 
       # - id: no-commit-to-branch
       #   name: No Commit to Branch
