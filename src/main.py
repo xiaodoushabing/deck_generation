@@ -184,8 +184,8 @@ def generate_deck(config: DeckConfig):
         print("\n=== Usage Statistics ===")
         print(f"Structure generation tokens: {structure_usage.total_tokens}")
         print(f"Content generation tokens: {content_usage.total_tokens}")
-        print(f"Mermaid processing tokens: {mermaid_usage.total_tokens}")
-        print(f"Total tokens used: {structure_usage.total_tokens + content_usage.total_tokens + mermaid_usage.total_tokens}")
+        print(f"Mermaid processing tokens: {mermaid_usage['total_tokens']}")
+        print(f"Total tokens used: {structure_usage.total_tokens + content_usage.total_tokens + mermaid_usage['total_tokens']}")
 
 
 # # %% Execution Examples

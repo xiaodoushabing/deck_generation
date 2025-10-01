@@ -306,6 +306,15 @@ Markdown document to validate:
         pattern = r"```mermaid\n(.*?)\n```(?:\n```)*"
 
         def fix_mermaid_block(match):
+            """
+            Clean and reformat a matched Mermaid code block.
+
+            Args:
+                match: A regex match object for a Mermaid code block.
+
+            Returns:
+                A string with the cleaned and properly formatted Mermaid code block.
+            """
             mermaid_content = match.group(1).strip()
 
             # Remove any stray ``` lines within the content
@@ -359,7 +368,7 @@ Markdown document to validate:
         cleaned_content = self.clean_mermaid_blocks(content)
 
         # Then validate and fix syntax
-        system_prompt = self.validation_system_prompt()
+        system_prompt = self.validation_system_prompt
         user_prompt = self._get_validation_user_prompt(cleaned_content)
 
         validated_content, usage = LLMUtils.get_response(self.client, system_prompt, user_prompt, context="Mermaid validation")
