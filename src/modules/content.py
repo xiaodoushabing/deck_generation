@@ -9,6 +9,8 @@ from typing import Any, Tuple
 
 from utilities import FileIO
 
+from .llm_utils import LLMUtils
+
 
 class SlideContentGenerator:
     """Handles slide content generation for presentations."""
@@ -21,7 +23,16 @@ class SlideContentGenerator:
             client: OpenAI client instance for API calls
         """
         self.client = client
-        self.output_format = """
+
+    @property
+    def output_format(self) -> str:
+        """
+        Get the output format for slide content generation.
+
+        Returns:
+            Formatted output string
+        """
+        return """
 The output must be a markdown document structured for Pandoc conversion to PowerPoint.
 Follow these formatting rules:
 
@@ -69,7 +80,8 @@ Powerpoint can use this information to do syntax highlighting.
     Inline: Inline note.^[This is an inline footnote.]
 """
 
-    def _get_system_prompt(self) -> str:
+    @property
+    def system_prompt(self) -> str:
         """Get the system prompt for slide content generation."""
         return f"""
 You are an expert at creating concise, visual slide content.
@@ -87,7 +99,8 @@ Output format:
 {self.output_format}
 """
 
-    def _get_user_prompt(self, slide_structure: str, markdown_content: str) -> str:
+    @staticmethod
+    def _get_user_prompt(slide_structure: str, markdown_content: str) -> str:
         """
         Generate user prompt for content generation.
 
@@ -99,46 +112,28 @@ Output format:
             Formatted user prompt string
         """
         return f"""
-Slide structure:
-{slide_structure}.
+Use the provided slide structure as your guide and extract relevant key information from the reference content to create detailed slides.
 
-Reference markdown content:
+**Slide Structure to Follow:**
+{slide_structure}
+
+**Reference Content:**
 ```markdown
 {markdown_content}
 ```
-Please generate a presentation in markdown format described above.
-The markdown should be clean and ready for conversion into a PowerPoint presentation using Pandoc.
+
+**Instructions:**
+1. Follow the exact slide structure provided - create slides with the specified headings and key messages
+2. For each slide, extract and synthesize relevant information from the reference content that supports the slide's key message
+3. If reference content is limited or unavailable for a specific slide, use your knowledge to provide relevant content that aligns with the slide's purpose.
+For such content, ensure it is accurate and contextually appropriate.
+Also, clearly indicate when you are using your own knowledge versus the reference content.
+4. Maintain logical flow between slides as outlined in the structure
+5. Ensure each slide has substantive content - avoid placeholder text unless absolutely necessary.
+6. Include speaker notes where appropriate to provide additional context
+
+Generate the complete presentation in markdown format, ready for Pandoc conversion to PowerPoint.
 """
-
-    def _get_response(
-        self, system_prompt: str, user_prompt: str, max_tokens: int = 10000, model: str = "gpt-oss-120b"
-    ) -> Tuple[str, Any]:
-        """
-        Get LLM response for content generation.
-
-        Args:
-            system_prompt: System prompt for the LLM
-            user_prompt: User prompt for the LLM
-            max_tokens: Maximum tokens for response
-            model: Model to use for generation
-
-        Returns:
-            Tuple of (response_content, usage_info)
-        """
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-
-        response = self.client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, stream=False)
-
-        message = response.choices[0].message
-        llm_response = message.content
-        llm_usage = response.usage
-
-        print(f"Content generation response:\n{llm_response}")
-        print(f"Prompt tokens used: {llm_usage.prompt_tokens}")
-        print(f"Completion tokens used: {llm_usage.completion_tokens}")
-        print(f"Total tokens used: {llm_usage.total_tokens}")
-
-        return llm_response, llm_usage
 
     def generate_content(self, slide_structure: str, markdown_path: str = None) -> Tuple[str, Any]:
         """
@@ -158,10 +153,12 @@ The markdown should be clean and ready for conversion into a PowerPoint presenta
             markdown_content = ""
 
         # Generate prompts
-        system_prompt = self._get_system_prompt()
+        system_prompt = self.system_prompt
         user_prompt_formatted = self._get_user_prompt(slide_structure, markdown_content)
 
         # Get response from LLM
-        content_response, usage = self._get_response(system_prompt, user_prompt_formatted)
+        content_response, usage = LLMUtils.get_response(
+            self.client, system_prompt, user_prompt_formatted, context="Content generation"
+        )
 
         return content_response, usage

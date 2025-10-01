@@ -8,6 +8,8 @@ for PowerPoint presentations.
 import re
 from typing import Any, Tuple
 
+from .llm_utils import LLMUtils
+
 
 class MermaidProcessor:
     """Handles mermaid diagram generation, cleanup, and validation."""
@@ -20,7 +22,16 @@ class MermaidProcessor:
             client: OpenAI client instance for API calls
         """
         self.client = client
-        self.few_shot_examples = """
+
+    @property
+    def few_shot_examples(self) -> str:
+        """
+        Get the few-shot examples for mermaid diagram generation.
+
+        Returns:
+            Formatted examples string
+        """
+        return """
 - Sequence diagram:
 
 ```mermaid
@@ -139,9 +150,11 @@ radar-beta
     max 100
     min 0
 ```
+
 """
 
-    def _get_generation_system_prompt(self) -> str:
+    @property
+    def generation_system_prompt(self) -> str:
         """Get the system prompt for mermaid diagram generation."""
         return f"""
 You are a specialized agent that enhances Markdown documents by inserting syntactically correct Mermaid diagrams.
@@ -168,12 +181,12 @@ You are a specialized agent that enhances Markdown documents by inserting syntac
 
 **Diagram Selection Guidelines:**
 Choose appropriate diagram types based on content:
-- Process flows → Flowchart
-- System interactions → Sequence diagram
-- Data structures → Class diagram
-- Comparisons → Quadrant chart
-- Timeline data → Timeline diagram
-- Statistics → Pie chart
+- Process flows: Flowchart
+- System interactions: Sequence diagram
+- Data structures: Class diagram
+- Comparisons: Quadrant chart
+- Timeline data: Timeline diagram
+- Statistics: Pie chart
 
 **Quality Standards:**
 - All diagrams must be syntactically correct
@@ -181,10 +194,12 @@ Choose appropriate diagram types based on content:
 - Diagram type must match the content being illustrated
 - Keep diagrams simple and focused
 
+**Few-shot examples:**
 {self.few_shot_examples}
 """
 
-    def _get_generation_user_prompt(self, slide_content: str) -> str:
+    @staticmethod
+    def _get_generation_user_prompt(slide_content: str) -> str:
         """
         Generate user prompt for mermaid diagram generation.
 
@@ -207,7 +222,8 @@ Markdown content:
 {slide_content}
 """
 
-    def _get_validation_system_prompt(self) -> str:
+    @property
+    def validation_system_prompt(self) -> str:
         """Get the system prompt for mermaid diagram validation."""
         return """
 You are a specialized agent responsible for validating and correcting Mermaid diagrams embedded in Markdown documents.
@@ -246,7 +262,8 @@ Your responsibilities are:
 - String literals should use consistent quoting (prefer no quotes when possible)
 """
 
-    def _get_validation_user_prompt(self, content: str) -> str:
+    @staticmethod
+    def _get_validation_user_prompt(content: str) -> str:
         """
         Generate user prompt for mermaid diagram validation.
 
@@ -272,36 +289,6 @@ Do not modify any non-Mermaid content.
 Markdown document to validate:
 {content}
 """
-
-    def _get_response(
-        self, system_prompt: str, user_prompt: str, max_tokens: int = 10000, model: str = "gpt-oss-120b"
-    ) -> Tuple[str, Any]:
-        """
-        Get LLM response for mermaid processing.
-
-        Args:
-            system_prompt: System prompt for the LLM
-            user_prompt: User prompt for the LLM
-            max_tokens: Maximum tokens for response
-            model: Model to use for generation
-
-        Returns:
-            Tuple of (response_content, usage_info)
-        """
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-
-        response = self.client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens, stream=False)
-
-        message = response.choices[0].message
-        llm_response = message.content
-        llm_usage = response.usage
-
-        print(f"Mermaid processing response:\n{llm_response}")
-        print(f"Prompt tokens used: {llm_usage.prompt_tokens}")
-        print(f"Completion tokens used: {llm_usage.completion_tokens}")
-        print(f"Total tokens used: {llm_usage.total_tokens}")
-
-        return llm_response, llm_usage
 
     def clean_mermaid_blocks(self, content: str) -> str:
         """
@@ -338,33 +325,9 @@ Markdown document to validate:
             # Return properly formatted mermaid block
             return f"```mermaid\n{cleaned_content}\n```"
 
+        # Replace every match of pattern with the result of fix_mermaid_block
         # Apply the fix to all mermaid blocks
-        cleaned_content = re.sub(pattern, fix_mermaid_block, content, flags=re.DOTALL)
-
-        # Additional cleanup: remove any standalone ``` lines that might be left
-        lines = cleaned_content.split("\n")
-        final_lines = []
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            # If we find a standalone ``` line, check if it's not part of a proper code block
-            if line.strip() == "```":
-                # Look back to see if this might be closing a code block
-                prev_code_block = False
-                for j in range(i - 1, max(-1, i - 10), -1):
-                    if j >= 0 and lines[j].strip().startswith("```"):
-                        prev_code_block = True
-                        break
-
-                # If it's not properly closing a code block, skip it
-                if not prev_code_block:
-                    i += 1
-                    continue
-
-            final_lines.append(line)
-            i += 1
-
-        return "\n".join(final_lines)
+        return re.sub(pattern, fix_mermaid_block, content, flags=re.DOTALL)
 
     def generate_mermaid_diagrams(self, slide_content: str) -> Tuple[str, Any]:
         """
@@ -376,10 +339,10 @@ Markdown document to validate:
         Returns:
             Tuple of (enhanced_content, usage_info)
         """
-        system_prompt = self._get_generation_system_prompt()
+        system_prompt = self.generation_system_prompt
         user_prompt = self._get_generation_user_prompt(slide_content)
 
-        enhanced_content, usage = self._get_response(system_prompt, user_prompt)
+        enhanced_content, usage = LLMUtils.get_response(self.client, system_prompt, user_prompt, context="Mermaid generation")
         return enhanced_content, usage
 
     def validate_and_fix_diagrams(self, content: str) -> Tuple[str, Any]:
@@ -396,10 +359,10 @@ Markdown document to validate:
         cleaned_content = self.clean_mermaid_blocks(content)
 
         # Then validate and fix syntax
-        system_prompt = self._get_validation_system_prompt()
+        system_prompt = self.validation_system_prompt()
         user_prompt = self._get_validation_user_prompt(cleaned_content)
 
-        validated_content, usage = self._get_response(system_prompt, user_prompt)
+        validated_content, usage = LLMUtils.get_response(self.client, system_prompt, user_prompt, context="Mermaid validation")
         return validated_content, usage
 
     def process_mermaid_diagrams(self, slide_content: str) -> Tuple[str, dict]:
