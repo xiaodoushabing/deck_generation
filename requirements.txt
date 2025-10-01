@@ -1,0 +1,6 @@
+pandoc
+httpx
+openai
+python-dotenv
+# pillow
+# matplotlib

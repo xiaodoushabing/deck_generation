@@ -1,0 +1,23 @@
+[tool.black]
+line-length = 128
+
+[tool.isort]
+profile = "black"
+atomic = true
+verbose = false
+
+[tool.interrogate]
+verbose = 2
+fail-under = 100
+omit-covered-files = true
+ignore-init-method = true
+ignore-init-module = true
+ignore-module = true
+ignore-magic = true
+ignore-semiprivate = true
+ignore-private = true
+
+[tool.autoflake]
+in-place = true
+remove-unused-variables = true
+recursive = true
