@@ -239,29 +239,41 @@ Your responsibilities are:
 - Verify there are no duplicate or nested backticks within the diagram content
 - Ensure proper newlines before and after code blocks
 
-3. **Syntax Validation & Common Fixes**
+3. **Node Labeling Syntax (CRITICAL)**
+- Node labels with special characters, spaces, parentheses, or HTML tags MUST be quoted
+- Use double quotes for labels: NodeID["Label with spaces/special chars"]
+- Examples of REQUIRED quoting:
+  * Start["signal received<br/>(sigint / sigterm)"] ✓
+  * Start[signal received<br/>(sigint / sigterm)] ✗ (INVALID)
+  * Cleanup["_cleanup()"] ✓
+  * Cleanup[_cleanup()] ✗ (INVALID if contains special chars)
+- Simple alphanumeric labels can be unquoted: NodeID[SimpleLabel] or NodeID["SimpleLabel"]
+
+4. **Syntax Validation & Common Fixes**
 - Fix invalid Mermaid syntax according to official Mermaid documentation
 - Replace invalid arrow syntax: Use --> instead of -- >
-- Fix node labeling: Use proper syntax for labels (A["Label"] or A[Label])
+- Fix node labeling: Ensure all labels with special characters are properly quoted
 - Correct relationship syntax in class diagrams: Use --> instead of -- >
 - Fix flowchart syntax: Ensure proper node definitions and connections
 - Validate diagram types and their specific syntax requirements
 
-4. **Specific Error Patterns to Fix**
+5. **Specific Error Patterns to Fix**
 - Invalid arrows: `-- >` → `-->`
-- Malformed node labels with quotes: Escape or remove problematic quotes
+- Unquoted labels with special characters: `Node[label(with)special]` → `Node["label(with)special"]`
+- Unquoted labels with spaces: `Node[my label]` → `Node["my label"]`
+- Unquoted labels with HTML: `Node[text<br/>more]` → `Node["text<br/>more"]`
 - Invalid class diagram relationships: Fix inheritance and association syntax
 - Flowchart orientation errors: Ensure valid orientations (TB, TD, BT, RL, LR)
 - Timeline syntax errors: Fix section and event formatting
 
-5. **Validation Rules**
+6. **Validation Rules**
 - Flowcharts must start with `flowchart` or `graph` followed by orientation
 - Class diagrams must start with `classDiagram`
 - Sequence diagrams must start with `sequenceDiagram`
 - All node IDs must be valid (alphanumeric, no spaces)
-- String literals should use consistent quoting (prefer no quotes when possible)
+- Any label containing spaces, parentheses, brackets, HTML tags, or special characters MUST be quoted
 
-6. **Output Requirement**
+7. **Output Requirement**
 - You must always return the entire markdown document, including both modified and unmodified content, even if no changes are made.
 - Never summarize, omit, or skip any sections. Do not reply with explanations or comments—only output the full markdown document.
 """
@@ -283,15 +295,17 @@ Please validate and fix the Mermaid diagrams in the following Markdown document.
 Focus on these common issues:
 1. Duplicate or malformed ``` lines
 2. Invalid arrow syntax (-- > should be -->)
-3. Incorrect node labeling or relationships
-4. Invalid diagram type declarations
-5. Syntax errors that prevent rendering
+3. **CRITICAL: Unquoted node labels with special characters**
+   - Labels with spaces, parentheses, HTML tags, or special chars MUST be quoted
+   - Fix: Start[signal received<br/>(sigint)] → Start["signal received<br/>(sigint)"]
+   - Fix: Cleanup[_cleanup()] → Cleanup["_cleanup()"]
+4. Incorrect node labeling or relationships
+5. Invalid diagram type declarations
+6. Syntax errors that prevent rendering
 
 - Only fix Mermaid code blocks with errors.
 - Do not modify any non-Mermaid content.
 - Return the entire markdown document, even if no changes are needed.
-- Apply fixes only where necessary to ensure diagrams are syntactically correct and renderable.
-- Do not omit any sections.
 
 Markdown document to validate:
 {content}
