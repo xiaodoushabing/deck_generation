@@ -391,49 +391,28 @@ Markdown document to validate:
         return re.sub(pattern, fix_mermaid_block, content, flags=re.DOTALL)
 
     @staticmethod
-    def validate_notes_closure(content: str) -> Tuple[bool, list]:
+    def validate_notes_closure(content: str) -> str:
         """
-        Validate that all ::: notes sections are properly closed before the next slide.
+        Fix unclosed ::: notes sections by adding missing closing ::: before slide separators.
 
         Args:
-            content: Markdown content to validate
+            content: Markdown content to fix
 
         Returns:
-            Tuple of (is_valid, list_of_errors)
+            Fixed content with properly closed notes sections
         """
-        lines = content.split("\n")
-        errors = []
-        notes_open = False
-        slide_number = 1
+        # Pattern to find unclosed notes sections before slide separators or end of content
+        pattern = r"(::: notes(?:(?!:::).)*?)(?=\n---|\Z)"
 
-        for i, line in enumerate(lines, 1):
-            stripped = line.strip()
+        def fix_unclosed_notes(match):
+            """Add closing ::: to unclosed notes sections."""
+            notes_content = match.group(1).rstrip()
+            return f"{notes_content}\n:::"
 
-            # Check for slide separator
-            if stripped == "---":
-                if notes_open:
-                    errors.append(f"Slide {slide_number}: Notes section not closed before slide separator at line {i}")
-                    notes_open = False
-                slide_number += 1
+        # Fix unclosed notes sections
+        fixed_content = re.sub(pattern, fix_unclosed_notes, content, flags=re.DOTALL | re.MULTILINE)
 
-            # Check for notes opening
-            elif stripped.startswith("::: notes"):
-                if notes_open:
-                    errors.append(f"Slide {slide_number}: Notes section already open at line {i}")
-                notes_open = True
-
-            # Check for notes closing
-            elif stripped == ":::":
-                if not notes_open:
-                    errors.append(f"Slide {slide_number}: Closing ::: without opening notes section at line {i}")
-                else:
-                    notes_open = False
-
-        # Check if notes are still open at end of content
-        if notes_open:
-            errors.append(f"Slide {slide_number}: Notes section not closed at end of document")
-
-        return len(errors) == 0, errors
+        return fixed_content
 
     def generate_mermaid_diagrams(self, slide_content: str) -> Tuple[str, Any]:
         """
@@ -469,9 +448,9 @@ Markdown document to validate:
 
         # Then clean up malformed blocks
         cleaned_content = self.clean_mermaid_blocks(validated_content)
-        cleaned_content = self.validate_notes_closure(cleaned_content)
+        fixed_content = self.validate_notes_closure(cleaned_content)
 
-        return cleaned_content, usage
+        return fixed_content, usage
 
     def process_mermaid_diagrams(self, slide_content: str) -> Tuple[str, dict]:
         """
