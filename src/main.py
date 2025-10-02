@@ -73,8 +73,10 @@ class DeckConfig:
 
         # Define all output file paths
         self.slide_content_filename = str(self.session_dir / f"{clean_name}_basic.md")
+        self.enhanced_content_filename = str(self.session_dir / f"{clean_name}_enhanced.md")
         self.final_content_filename = str(self.session_dir / f"{clean_name}.md")
         self.output_pptx = str(self.session_dir / f"{clean_name}_basic.pptx")
+        self.enhanced_output_pptx = str(self.session_dir / f"{clean_name}_enhanced.pptx")
         self.final_output_pptx = str(self.session_dir / f"{clean_name}.pptx")
 
         # Store the clean name for reference
@@ -171,14 +173,18 @@ def generate_deck(config: DeckConfig):
 
     else:
         print("\n3. Processing mermaid diagrams...")
-        final_content, mermaid_usage = mermaid_proc.process_mermaid_diagrams(slide_content)
+        enhanced_content, final_content, mermaid_usage = mermaid_proc.process_mermaid_diagrams(slide_content)
 
+        # Save enhanced content and create enhanced PowerPoint
+        FileIO.fwrite(config.enhanced_content_filename, enhanced_content)
+        convert_to_ppt(config.enhanced_content_filename, config.enhanced_output_pptx)
         # Save final content with mermaid diagrams
         FileIO.fwrite(config.final_content_filename, final_content)
         convert_to_ppt(config.final_content_filename, config.final_output_pptx)
 
         print("\n=== Generation Complete ===")
-        print(f"Enhanced presentation saved: {config.final_output_pptx}")
+        print(f"Enhanced presentation saved: {config.enhanced_output_pptx}")
+        print(f"Final presentation saved: {config.final_output_pptx}")
 
         # Print usage statistics
         print("\n=== Usage Statistics ===")

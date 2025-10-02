@@ -260,6 +260,10 @@ Your responsibilities are:
 - Sequence diagrams must start with `sequenceDiagram`
 - All node IDs must be valid (alphanumeric, no spaces)
 - String literals should use consistent quoting (prefer no quotes when possible)
+
+6. **Output Requirement**
+- You must always return the entire markdown document, including both modified and unmodified content, even if no changes are made.
+- Never summarize, omit, or skip any sections. Do not reply with explanations or comments—only output the full markdown document.
 """
 
     @staticmethod
@@ -283,8 +287,11 @@ Focus on these common issues:
 4. Invalid diagram type declarations
 5. Syntax errors that prevent rendering
 
-Apply fixes only where necessary to ensure diagrams are syntactically correct and renderable.
-Do not modify any non-Mermaid content.
+- Only fix Mermaid code blocks with errors.
+- Do not modify any non-Mermaid content.
+- Return the entire markdown document, even if no changes are needed.
+- Apply fixes only where necessary to ensure diagrams are syntactically correct and renderable.
+- Do not omit any sections.
 
 Markdown document to validate:
 {content}
@@ -303,7 +310,7 @@ Markdown document to validate:
         """
         # Pattern to find mermaid code blocks (including malformed ones)
         # This handles cases where there might be extra ``` lines
-        pattern = r"```mermaid\n(.*?)\n```(?:\n```)*"
+        pattern = r"```mermaid\n(.*?)\n```(?:\n*```)*"
 
         def fix_mermaid_block(match):
             """
@@ -364,15 +371,16 @@ Markdown document to validate:
         Returns:
             Tuple of (validated_content, usage_info)
         """
-        # First clean up malformed blocks
-        cleaned_content = self.clean_mermaid_blocks(content)
-
-        # Then validate and fix syntax
+        # First validate and fix syntax
         system_prompt = self.validation_system_prompt
-        user_prompt = self._get_validation_user_prompt(cleaned_content)
+        user_prompt = self._get_validation_user_prompt(content)
 
         validated_content, usage = LLMUtils.get_response(self.client, system_prompt, user_prompt, context="Mermaid validation")
-        return validated_content, usage
+
+        # Then clean up malformed blocks
+        cleaned_content = self.clean_mermaid_blocks(validated_content)
+
+        return cleaned_content, usage
 
     def process_mermaid_diagrams(self, slide_content: str) -> Tuple[str, dict]:
         """
@@ -397,4 +405,4 @@ Markdown document to validate:
             "total_tokens": generation_usage.total_tokens + validation_usage.total_tokens,
         }
 
-        return final_content, total_usage
+        return enhanced_content, final_content, total_usage
