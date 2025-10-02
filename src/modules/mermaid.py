@@ -151,6 +151,31 @@ radar-beta
     min 0
 ```
 
+- Gantt chart:
+
+```mermaid
+gantt
+    dateFormat  YYYY-MM-DD
+    title       Adding GANTT diagram functionality to mermaid
+    excludes    weekends
+    %% (`excludes` accepts specific dates in YYYY-MM-DD format, days of the week ("sunday") or "weekends", but not the word "weekdays".)
+
+    section A section
+    Completed task            :done,    des1, 2014-01-06,2014-01-08
+    Active task               :active,  des2, 2014-01-09, 3d
+    Future task               :         des3, after des2, 5d
+    Future task2              :         des4, after des3, 5d
+
+    section Critical tasks
+    Completed task in the critical line :crit, done, 2014-01-06,24h
+    Implement parser and jison          :crit, done, after des1, 2d
+    Create tests for parser             :crit, active, 3d
+    Future task in critical line        :crit, 5d
+    Create tests for renderer           :2d
+    Add to mermaid                      :until isadded
+    Functionality added                 :milestone, isadded, 2014-01-25, 0d
+```
+
 """
 
     @property
@@ -164,6 +189,7 @@ You are a specialized agent that enhances Markdown documents by inserting syntac
 - Do NOT modify any existing Markdown content
 - Ensure all Mermaid syntax is valid and renderable
 - Limit to one diagram per slide unless explicitly needed
+- Skip diagram insertion if content is already clear without visual aid
 
 **Mermaid Code Block Rules:**
 - Opening: ```mermaid (exactly three backticks + "mermaid")
@@ -186,6 +212,7 @@ Choose appropriate diagram types based on content:
 - Data structures: Class diagram
 - Comparisons: Quadrant chart
 - Timeline data: Timeline diagram
+- Project schedules: Gantt chart
 - Statistics: Pie chart
 
 **Quality Standards:**
@@ -210,9 +237,12 @@ Choose appropriate diagram types based on content:
             Formatted user prompt string
         """
         return f"""
-Enhance this Markdown document by inserting relevant Mermaid diagrams where they add value.
+Analyze this Markdown document and insert Mermaid diagrams ONLY where they provide significant visual value.
 
-Rules:
+Critical Rules:
+- Only add diagrams if they enhance understanding beyond the text, or would benefit from a visual aid
+e.g., visualizing a process, structure, timeline, comparison, statistics, summary, etc.
+- Skip if content is already clear and well-structured
 - Insert diagrams within speaker notes sections only
 - One diagram per slide maximum, unless multiple are clearly needed
 - Ensure syntactically correct Mermaid code
