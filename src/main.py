@@ -175,11 +175,21 @@ def generate_deck(config: DeckConfig):
         print("\n3. Processing mermaid diagrams...")
         enhanced_content, final_content, mermaid_usage = mermaid_proc.process_mermaid_diagrams(slide_content)
 
+        # Render Mermaid to Images
+        from modules import MermaidRenderer
+
+        # Create a directory for images inside your session folder
+        images_dir = config.session_dir / "images"
+        renderer = MermaidRenderer(images_dir=str(images_dir))
+
+        print("   Rendering mermaid diagrams to images...")
+        final_content_with_images = renderer.process_slides(final_content)
+
         # Save enhanced content and create enhanced PowerPoint
         FileIO.fwrite(config.enhanced_content_filename, enhanced_content)
         convert_to_ppt(config.enhanced_content_filename, config.enhanced_output_pptx)
         # Save final content with mermaid diagrams
-        FileIO.fwrite(config.final_content_filename, final_content)
+        FileIO.fwrite(config.final_content_filename, final_content_with_images)
         convert_to_ppt(config.final_content_filename, config.final_output_pptx)
 
         print("\n=== Generation Complete ===")
