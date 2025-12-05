@@ -2,6 +2,7 @@ import base64
 import hashlib
 import os
 import re
+import subprocess
 from typing import Optional
 
 import httpx
@@ -26,43 +27,43 @@ class MermaidRenderer:
     def _render_to_file(self, mermaid_code: str) -> Optional[str]:
         """
         Renders mermaid code to PNG and returns the file path.
-
+        
         Args:
             mermaid_code: The mermaid diagram syntax
-
+            
         Returns:
             Path to the generated image file, or None if failed
         """
         # Generate hash for filename to avoid duplicates/re-rendering
-        code_hash = hashlib.md5(mermaid_code.strip().encode("utf-8")).hexdigest()
+        code_hash = hashlib.md5(mermaid_code.strip().encode('utf-8')).hexdigest()
         filename = f"mermaid_{code_hash}.png"
         filepath = os.path.join(self.images_dir, filename)
-
+        
         # Return existing if already generated
         if os.path.exists(filepath):
             return filepath.replace("\\", "/")
 
-        # Encode for mermaid.ink
-        # mermaid.ink expects base64 encoding of the diagram code
-        # We use urlsafe_b64encode to ensure the string is URL-safe
-        graphbytes = mermaid_code.strip().encode("utf8")
-        base64_bytes = base64.urlsafe_b64encode(graphbytes)
-        base64_string = base64_bytes.decode("ascii")
-
-        url = f"https://mermaid.ink/img/{base64_string}"
-
+        # Try remote rendering (mermaid.ink)
         try:
-            # Use httpx as it's already in requirements
-            response = httpx.get(url, timeout=10.0)
+            # Encode for mermaid.ink
+            graphbytes = mermaid_code.strip().encode("utf8")
+            base64_bytes = base64.urlsafe_b64encode(graphbytes)
+            base64_string = base64_bytes.decode("ascii")
+            
+            url = f"https://mermaid.ink/img/{base64_string}"
+            
+            # Use httpx with verify=False to handle potential proxy SSL issues
+            response = httpx.get(url, timeout=10.0, verify=False)
             if response.status_code == 200:
-                with open(filepath, "wb") as f:
+                with open(filepath, 'wb') as f:
                     f.write(response.content)
                 return filepath.replace("\\", "/")
             else:
                 print(f"Mermaid.ink returned status {response.status_code}")
         except Exception as e:
-            print(f"Failed to render mermaid diagram: {e}")
-
+            # Log error but don't crash
+            print(f"Warning: Failed to render mermaid diagram (Remote): {e}")
+            
         return None
 
     def process_slides(self, content: str) -> str:
